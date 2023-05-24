@@ -14,7 +14,9 @@ func TestServer(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", body)
 	response := httptest.NewRecorder()
 
-	Server(response, request)
+	server := NewServer()
+
+	server.ServeHTTP(response, request)
 
 	got := response.Body.String()
 	want := "https://github.com/nekidb"

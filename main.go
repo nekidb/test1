@@ -10,7 +10,14 @@ type SourceURL struct {
 	URL string `json:"url"`
 }
 
-func Server(w http.ResponseWriter, r *http.Request) {
+type Server struct {
+}
+
+func NewServer() *Server {
+	return &Server{}
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		panic(err)
