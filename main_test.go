@@ -8,7 +8,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	json := `{url:"https://github.com/nekidb"}`
+	json := `{"url":"https://github.com/nekidb"}`
 	body := &bytes.Buffer{}
 	body.WriteString(json)
 	request := httptest.NewRequest(http.MethodGet, "/", body)
@@ -17,8 +17,8 @@ func TestServer(t *testing.T) {
 	Server(response, request)
 
 	got := response.Body.String()
+	want := "https://github.com/nekidb"
 
-	want := `{url:"https://github.com/nekidb"}`
 	if got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
