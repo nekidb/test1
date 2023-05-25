@@ -98,7 +98,7 @@ func (s *StubStorage) GetSrc(shortURL string) (string, bool) {
 	srcURL, ok := "", false
 	for k, v := range s.data {
 		if v == shortURL {
-			srcURL, ok = k, true
+			srcUR, ok = k, true
 		}
 	}
 

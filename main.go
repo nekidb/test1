@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"strings"
 )
 
 type URLPair struct {
@@ -14,7 +15,8 @@ type URLPair struct {
 
 type Storage interface {
 	Write(srcURL, shortURL string)
-	Get(srcURL string) (string, bool)
+	GetShort(srcURL string) (string, bool)
+	GetSrc(shortURL string) (string, bool)
 }
 
 type SourceURL struct {
@@ -30,6 +32,29 @@ func NewServer(storage Storage) *Server {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" {
+		s.shorterHandler(w, r)
+		return
+	}
+
+	redirectHandler := s.createRedirectHandler(r.URL.Path)
+	redirectHandler(w, r)
+}
+
+func (s *Server) createRedirectHandler(path string) http.HandlerFunc {
+	shortURL := strings.TrimPrefix(path, "/")
+	srcURL, ok := s.storage.GetSrc(shortURL)
+	if !ok {
+		return http.NotFound
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusFound)
+		w.Write([]byte(srcURL))
+	}
+}
+
+func (s *Server) shorterHandler(w http.ResponseWriter, r *http.Request) {
 	requestBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		panic(err)
@@ -53,7 +78,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(resultJSON)
-	s.storage.Write(jsonURL.URL, "")
+	s.storage.Write(pair.SrcURL, pair.ShortURL)
 }
 
 func generateURL() string {
