@@ -6,15 +6,21 @@ import (
 	"net/http"
 )
 
+type Storage interface {
+	Write(srcURL, shortURL string)
+	Get(srcURL string) (string, bool)
+}
+
 type SourceURL struct {
 	URL string `json:"url"`
 }
 
 type Server struct {
+	storage Storage
 }
 
-func NewServer() *Server {
-	return &Server{}
+func NewServer(storage Storage) *Server {
+	return &Server{storage}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +35,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	w.Write([]byte(jsonURL.URL))
+	s.storage.Write(jsonURL.URL, "")
 }
 
 func main() {
