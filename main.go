@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 )
 
 type URLPair struct {
-	SrcURL string `json:"srcURL"`
+	SrcURL   string `json:"srcURL"`
 	ShortURL string `json:"shortURL"`
 }
 
@@ -40,9 +41,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
+	shortURL := generateURL()
 	pair := &URLPair{
-		SrcURL: jsonURL.URL,
-		ShortURL: "",
+		SrcURL:   jsonURL.URL,
+		ShortURL: shortURL,
 	}
 
 	resultJSON, err := json.Marshal(pair)
@@ -52,6 +54,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(resultJSON)
 	s.storage.Write(jsonURL.URL, "")
+}
+
+func generateURL() string {
+	host := "localhost:8080/"
+
+	letters := []rune("abcdefgABCDEFG")
+	rnd := make([]rune, 5)
+	for i := range rnd {
+		rnd[i] = letters[rand.Intn(len(letters))]
+	}
+	return host + string(rnd)
 }
 
 func main() {

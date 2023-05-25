@@ -1,14 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"strings"
-	"encoding/json"
+	"testing"
 )
 
-const jsonString =  `{"url":"https://github.com/nekidb"}`
+const jsonString = `{"url":"https://github.com/nekidb"}`
 
 func TestReturnJSON(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
@@ -27,7 +27,6 @@ func TestReturnJSON(t *testing.T) {
 
 	got := pair.SrcURL
 	want := "https://github.com/nekidb"
-
 	if got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
@@ -44,7 +43,7 @@ func TestStorageWrite(t *testing.T) {
 
 	_, got := storage.Get("https://github.com/nekidb")
 	want := true
-	if got != want{
+	if got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
@@ -65,5 +64,5 @@ func (s *StubStorage) Write(srcURL, shortURL string) {
 
 func (s *StubStorage) Get(srcURL string) (string, bool) {
 	shortURL, ok := s.data[srcURL]
-	return shortURL, ok 
+	return shortURL, ok
 }
