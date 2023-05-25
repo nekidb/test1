@@ -5,33 +5,39 @@ import (
 	"net/http/httptest"
 	"testing"
 	"strings"
+	"encoding/json"
 )
 
 const jsonString =  `{"url":"https://github.com/nekidb"}`
 
-// func TestServer(t *testing.T) {
-// 	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
-// 	response := httptest.NewRecorder()
-// 
-// 	server := NewServer()
-// 
-// 	server.ServeHTTP(response, request)
-// 
-// 	got := response.Body.String()
-// 	want := "https://github.com/nekidb"
-// 
-// 	if got != want {
-// 		t.Errorf("got %v, want %v", got, want)
-// 	}
-// }
+func TestReturnJSON(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
+	response := httptest.NewRecorder()
+
+	storage := NewStubStorage()
+	server := NewServer(storage)
+
+	server.ServeHTTP(response, request)
+
+	pair := &URLPair{}
+	err := json.Unmarshal(response.Body.Bytes(), pair)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := pair.SrcURL
+	want := "https://github.com/nekidb"
+
+	if got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
 
 func TestStorageWrite(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
 	response := httptest.NewRecorder()
 
-	storage := &StubStorage{
-		data: make(map[string]string),
-	}
+	storage := NewStubStorage()
 	server := NewServer(storage)
 
 	server.ServeHTTP(response, request)
@@ -45,6 +51,12 @@ func TestStorageWrite(t *testing.T) {
 
 type StubStorage struct {
 	data map[string]string
+}
+
+func NewStubStorage() *StubStorage {
+	return &StubStorage{
+		data: make(map[string]string),
+	}
 }
 
 func (s *StubStorage) Write(srcURL, shortURL string) {

@@ -6,6 +6,11 @@ import (
 	"net/http"
 )
 
+type URLPair struct {
+	SrcURL string `json:"srcURL"`
+	ShortURL string `json:"shortURL"`
+}
+
 type Storage interface {
 	Write(srcURL, shortURL string)
 	Get(srcURL string) (string, bool)
@@ -35,6 +40,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
+	pair := &URLPair{
+		SrcURL: jsonURL.URL,
+		ShortURL: "",
+	}
+
+	resultJSON, err := json.Marshal(pair)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Write(resultJSON)
 	s.storage.Write(jsonURL.URL, "")
 }
 
