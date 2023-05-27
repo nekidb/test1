@@ -7,7 +7,8 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	server := NewServer()
+	shortener := StubShortener{}
+	server := NewServer(shortener)
 
 	t.Run("request home page", func(t *testing.T) {
 		request := createGetRequest("/")
@@ -32,15 +33,12 @@ func TestServerShortener(t *testing.T) {
 	request := createGetRequest("/short?url=\"https://github.com/nekidb\"")
 	response := httptest.NewRecorder()
 
-	server := NewServer()
+	shortener := StubShortener{}
+	server := NewServer(shortener)
 
 	server.ServeHTTP(response, request)
 
-	got := response.Body.String()
-	want := "https://github.com/nekidb"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
+	assertResponseBody(t, response.Body.String(), shortener.Short("https://githbub.com/nekidb"))
 }
 
 func assertResponseBody(t *testing.T, got, want string) {
@@ -59,4 +57,10 @@ func assertStatusCode(t *testing.T, got, want int) {
 
 func createGetRequest(url string) *http.Request {
 	return httptest.NewRequest(http.MethodGet, url, nil)
+}
+
+type StubShortener struct{}
+
+func (s StubShortener) Short(URL string) string {
+	return "short"
 }

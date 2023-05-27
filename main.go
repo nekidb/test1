@@ -5,20 +5,26 @@ import (
 	"strings"
 )
 
-type Server struct {
+type Shortener interface {
+	Short(URL string) string
 }
 
-func NewServer() *Server {
-	return &Server{}
+type Server struct {
+	shortener Shortener
+}
+
+func NewServer(shortener Shortener) *Server {
+	return &Server{shortener}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Welcome to best URL shortener!"))
 }
 
-func shortenerHandler(w http.ResponseWriter, r *http.Request) {
-	url := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=\""), "\"")
-	w.Write([]byte(url))
+func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
+	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=\""), "\"")
+	shortURL := s.shortener.Short(srcURL)
+	w.Write([]byte(shortURL))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +32,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/":
 		homeHandler(w, r)
 	case "/short":
-		shortenerHandler(w, r)
+		s.shortenerHandler(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -45,7 +51,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // }
 
 func main() {
-	server := NewServer()
-
-	http.ListenAndServe(":8080", server)
+	// server := NewServer()
+	//
+	// http.ListenAndServe(":8080", server)
 }
