@@ -1,106 +1,62 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
-const jsonString = `{"url":"https://github.com/nekidb"}`
+func TestServer(t *testing.T) {
+	server := NewServer()
 
-func TestRedirecting(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
-	response := httptest.NewRecorder()
+	t.Run("request home page", func(t *testing.T) {
+		request := createGetRequest("/")
+		response := httptest.NewRecorder()
 
-	storage := NewStubStorage()
-	server := NewServer(storage)
+		server.ServeHTTP(response, request)
 
-	server.ServeHTTP(response, request)
+		assertResponseBody(t, response.Body.String(), "Welcome to best URL shortener!")
+	})
+	t.Run("not found page", func(t *testing.T) {
+		request := createGetRequest("/somepage")
+		response := httptest.NewRecorder()
 
-	pair := &URLPair{}
-	err := json.Unmarshal(response.Body.Bytes(), pair)
-	if err != nil {
-		t.Fatal(err)
-	}
+		server.ServeHTTP(response, request)
 
-	request = httptest.NewRequest(http.MethodGet, "/"+pair.ShortURL, nil)
-	response = httptest.NewRecorder()
-
-	server.ServeHTTP(response, request)
-
-	got := response.Code
-	want := http.StatusFound
-	if got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
+		assertStatusCode(t, response.Code, http.StatusNotFound)
+		assertResponseBody(t, response.Body.String(), "404 page not found\n")
+	})
 }
 
-func TestReturnJSON(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
+func TestServerShortener(t *testing.T) {
+	request := createGetRequest("/short?url=\"https://github.com/nekidb\"")
 	response := httptest.NewRecorder()
 
-	storage := NewStubStorage()
-	server := NewServer(storage)
+	server := NewServer()
 
 	server.ServeHTTP(response, request)
 
-	pair := &URLPair{}
-	err := json.Unmarshal(response.Body.Bytes(), pair)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := pair.SrcURL
+	got := response.Body.String()
 	want := "https://github.com/nekidb"
 	if got != want {
-		t.Errorf("got %v, want %v", got, want)
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
-func TestStorageWrite(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/", strings.NewReader(jsonString))
-	response := httptest.NewRecorder()
+func assertResponseBody(t *testing.T, got, want string) {
+	t.Helper()
 
-	storage := NewStubStorage()
-	server := NewServer(storage)
-
-	server.ServeHTTP(response, request)
-
-	_, got := storage.GetShort("https://github.com/nekidb")
-	want := true
 	if got != want {
-		t.Errorf("got %v, want %v", got, want)
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
-type StubStorage struct {
-	data map[string]string
-}
-
-func NewStubStorage() *StubStorage {
-	return &StubStorage{
-		data: make(map[string]string),
+func assertStatusCode(t *testing.T, got, want int) {
+	if got != want {
+		t.Errorf("got status %d, want %d", got, want)
 	}
 }
 
-func (s *StubStorage) Write(srcURL, shortURL string) {
-	s.data[srcURL] = shortURL
-}
-
-func (s *StubStorage) GetShort(srcURL string) (string, bool) {
-	shortURL, ok := s.data[srcURL]
-	return shortURL, ok
-}
-
-func (s *StubStorage) GetSrc(shortURL string) (string, bool) {
-	srcURL, ok := "", false
-	for k, v := range s.data {
-		if v == shortURL {
-			srcURL, ok = k, true
-		}
-	}
-
-	return srcURL, ok
+func createGetRequest(url string) *http.Request {
+	return httptest.NewRequest(http.MethodGet, url, nil)
 }
