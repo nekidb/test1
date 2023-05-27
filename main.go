@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"net/http"
 	"strings"
 )
@@ -39,19 +40,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func generateURL() string {
-// 	host := "localhost:8080/"
-//
-// 	letters := []rune("abcdefgABCDEFG")
-// 	rnd := make([]rune, 5)
-// 	for i := range rnd {
-// 		rnd[i] = letters[rand.Intn(len(letters))]
-// 	}
-// 	return host + string(rnd)
-// }
+type SimpleShortener struct{}
+
+func (s SimpleShortener) Short(URL string) string {
+	host := "localhost:8080/"
+
+	letters := []rune("abcdefgABCDEFG")
+	rnd := make([]rune, 5)
+	for i := range rnd {
+		rnd[i] = letters[rand.Intn(len(letters))]
+	}
+	return host + string(rnd)
+}
 
 func main() {
-	// server := NewServer()
-	//
-	// http.ListenAndServe(":8080", server)
+	shortener := SimpleShortener{}
+	server := NewServer(shortener)
+	http.ListenAndServe(":8080", server)
 }
