@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -11,11 +12,15 @@ type Shortener interface {
 }
 
 type Server struct {
+	urls      map[string]string
 	shortener Shortener
 }
 
 func NewServer(shortener Shortener) *Server {
-	return &Server{shortener}
+	return &Server{
+		urls:      make(map[string]string),
+		shortener: shortener,
+	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,19 +28,33 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
-	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=\""), "\"")
+	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=\\%22"), "\\%22")
 	shortURL := s.shortener.Short(srcURL)
+
+	s.urls[shortURL] = srcURL
+
+	fmt.Println("writed: ", shortURL, srcURL)
+
 	w.Write([]byte(shortURL))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
+	path := r.URL.Path
+
+	switch path {
 	case "/":
 		homeHandler(w, r)
 	case "/short":
 		s.shortenerHandler(w, r)
 	default:
-		http.NotFound(w, r)
+		shortURL := "localhost:8080" + path
+		srcURL, ok := s.urls[shortURL]
+		fmt.Println(shortURL, srcURL, ok)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, srcURL, http.StatusFound)
 	}
 
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -41,6 +42,27 @@ func TestServerShortener(t *testing.T) {
 	assertResponseBody(t, response.Body.String(), shortener.Short("https://githbub.com/nekidb"))
 }
 
+func TestServerRedirecting(t *testing.T) {
+	shortener := StubShortener{}
+	server := NewServer(shortener)
+
+	request := createGetRequest("/short?url=\"https://github.com/nekidb\"")
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	shortURL := response.Body.String()
+	shortPath := strings.TrimPrefix(shortURL, "localhost:8080")
+
+	request = createGetRequest(shortPath)
+	response = httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	assertStatusCode(t, response.Code, http.StatusFound)
+	assertLocation(t, response.Header().Get("Location"), "url=\"https://github.com/nekidb\"")
+}
+
 func assertResponseBody(t *testing.T, got, want string) {
 	t.Helper()
 
@@ -55,6 +77,14 @@ func assertStatusCode(t *testing.T, got, want int) {
 	}
 }
 
+func assertLocation(t *testing.T, got, want string) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf("got location %q, want %q", got, want)
+	}
+}
+
 func createGetRequest(url string) *http.Request {
 	return httptest.NewRequest(http.MethodGet, url, nil)
 }
@@ -62,5 +92,5 @@ func createGetRequest(url string) *http.Request {
 type StubShortener struct{}
 
 func (s StubShortener) Short(URL string) string {
-	return "short"
+	return "localhost:8080/shorted"
 }
