@@ -7,7 +7,7 @@ import (
 )
 
 type Shortener interface {
-	Short(URL string) string
+	MakeShortPath() string
 }
 
 type Server struct {
@@ -22,25 +22,21 @@ func NewServer(shortener Shortener) *Server {
 	}
 }
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Welcome to best URL shortener!"))
-}
-
 func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
-	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=\\%22"), "\\%22")
-	shortURL := s.shortener.Short(srcURL)
+	fmt.Println("getting srcURL: ", r.URL.RawQuery)
+	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=%22"), "%22")
+	shortPath := s.shortener.MakeShortPath()
 
-	s.urls[shortURL] = srcURL
+	s.urls[shortPath] = srcURL
+	fmt.Println("writed to db: ", shortPath, srcURL)
 
-	fmt.Println("writed: ", shortURL, srcURL)
-
-	w.Write([]byte(shortURL))
+	w.Write([]byte(shortPath))
 }
 
-func (s *Server) redirectHandler(shortURL string, fallback http.HandlerFunc) http.HandlerFunc {
+func (s *Server) redirectHandler(shortPath string, fallback http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		srcURL, ok := s.urls[shortURL]
-		fmt.Println(shortURL, srcURL, ok)
+		srcURL, ok := s.urls[shortPath]
+		fmt.Println("trying to redirect: ", shortPath, srcURL, ok)
 		if ok {
 			http.Redirect(w, r, srcURL, http.StatusFound)
 			return
@@ -53,9 +49,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router := http.NewServeMux()
 
 	path := r.URL.Path
-	shortURL := "localhost:8080" + path
-
-	router.HandleFunc("/", s.redirectHandler(shortURL, http.NotFound))
+	fmt.Println("requested: ", path)
+	router.HandleFunc("/", s.redirectHandler(path, http.NotFound))
 	router.HandleFunc("/short", s.shortenerHandler)
 
 	router.ServeHTTP(w, r)

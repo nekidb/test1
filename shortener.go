@@ -15,10 +15,8 @@ func generateString(n int) string {
 	return string(b)
 }
 
-func (s SimpleShortener) Short(URL string) string {
-	host := "localhost:8080/"
-
+func (s SimpleShortener) MakeShortPath() string {
 	str := generateString(5)
 
-	return host + str
+	return "/" + str
 }
