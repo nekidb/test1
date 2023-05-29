@@ -49,7 +49,6 @@ func TestServerRedirecting(t *testing.T) {
 
 	assertStatusCode(t, response.Code, http.StatusFound)
 	assertLocation(t, response.Header().Get("Location"), srcURL)
-	// assertLocation(t, response.Header().Get("Location"), "url=\"https://github.com/nekidb\"")
 }
 
 func assertResponseBody(t *testing.T, got, want string) {
@@ -92,12 +91,12 @@ func (s *StubStorage) Put(shortURL, srcURL string) {
 	s.data[shortURL] = srcURL
 }
 
-func (s *StubStorage) GetSrcURL(shortURL string) (string, bool) {
-	srcURL, ok := s.data[shortURL]
+func (s *StubStorage) GetSrcURL(shortPath string) (string, bool) {
+	srcURL, ok := s.data[shortPath]
 	return srcURL, ok
 }
 
-func (s *StubStorage) GetShortURL(srcURL string) (string, bool) {
+func (s *StubStorage) GetShortPath(srcURL string) (string, bool) {
 	for k, v := range s.data {
 		if v == srcURL {
 			return k, true
