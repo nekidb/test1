@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strings"
 )
@@ -57,19 +56,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, srcURL, http.StatusFound)
 	}
 
-}
-
-type SimpleShortener struct{}
-
-func (s SimpleShortener) Short(URL string) string {
-	host := "localhost:8080/"
-
-	letters := []rune("abcdefgABCDEFG")
-	rnd := make([]rune, 5)
-	for i := range rnd {
-		rnd[i] = letters[rand.Intn(len(letters))]
-	}
-	return host + string(rnd)
 }
 
 func main() {
