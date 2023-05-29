@@ -10,14 +10,20 @@ type Shortener interface {
 	MakeShortPath() string
 }
 
+type Storage interface {
+	Put(shortURL, srcURL string)
+	GetSrcURL(shortURL string) (string, bool)
+	GetShortURL(srcURL string) (string, bool)
+}
+
 type Server struct {
-	urls      map[string]string
+	storage   Storage
 	shortener Shortener
 }
 
-func NewServer(shortener Shortener) *Server {
+func NewServer(storage Storage, shortener Shortener) *Server {
 	return &Server{
-		urls:      make(map[string]string),
+		storage:   storage,
 		shortener: shortener,
 	}
 }
@@ -27,7 +33,7 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=%22"), "%22")
 	shortPath := s.shortener.MakeShortPath()
 
-	s.urls[shortPath] = srcURL
+	s.storage.Put(shortPath, srcURL)
 	fmt.Println("writed to db: ", shortPath, srcURL)
 
 	w.Write([]byte(shortPath))
@@ -35,7 +41,8 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) redirectHandler(shortPath string, fallback http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		srcURL, ok := s.urls[shortPath]
+		srcURL, ok := s.storage.GetSrcURL(shortPath)
+		// srcURL, ok := s.urls[shortPath]
 		fmt.Println("trying to redirect: ", shortPath, srcURL, ok)
 		if ok {
 			http.Redirect(w, r, srcURL, http.StatusFound)
@@ -57,7 +64,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	shortener := SimpleShortener{}
-	server := NewServer(shortener)
-	http.ListenAndServe(":8080", server)
+	// shortener := SimpleShortener{}
+	// server := NewServer(shortener)
+	// http.ListenAndServe(":8080", server)
 }

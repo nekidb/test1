@@ -7,8 +7,9 @@ import (
 )
 
 func TestServer(t *testing.T) {
+	storage := &StubStorage{nil}
 	shortener := StubShortener{}
-	server := NewServer(shortener)
+	server := NewServer(storage, shortener)
 
 	t.Run("not found page", func(t *testing.T) {
 		request := createGetRequest("/somepage")
@@ -34,23 +35,21 @@ func TestServer(t *testing.T) {
 // }
 
 func TestServerRedirecting(t *testing.T) {
-	shortener := StubShortener{}
-	server := NewServer(shortener)
+	shortPath, srcURL := "/shortpath", "https://github.com/nekidb"
+	storage := &StubStorage{data: make(map[string]string)}
+	storage.Put(shortPath, srcURL)
 
-	request := createGetRequest("/short?url=\"https://github.com/nekidb\"")
+	shortener := StubShortener{}
+	server := NewServer(storage, shortener)
+
+	request := createGetRequest(shortPath)
 	response := httptest.NewRecorder()
 
 	server.ServeHTTP(response, request)
 
-	shortPath := response.Body.String()
-
-	request = createGetRequest(shortPath)
-	response = httptest.NewRecorder()
-
-	server.ServeHTTP(response, request)
-
 	assertStatusCode(t, response.Code, http.StatusFound)
-	assertLocation(t, response.Header().Get("Location"), "url=\"https://github.com/nekidb\"")
+	assertLocation(t, response.Header().Get("Location"), srcURL)
+	// assertLocation(t, response.Header().Get("Location"), "url=\"https://github.com/nekidb\"")
 }
 
 func assertResponseBody(t *testing.T, got, want string) {
@@ -83,4 +82,27 @@ type StubShortener struct{}
 
 func (s StubShortener) MakeShortPath() string {
 	return "/shorted"
+}
+
+type StubStorage struct {
+	data map[string]string
+}
+
+func (s *StubStorage) Put(shortURL, srcURL string) {
+	s.data[shortURL] = srcURL
+}
+
+func (s *StubStorage) GetSrcURL(shortURL string) (string, bool) {
+	srcURL, ok := s.data[shortURL]
+	return srcURL, ok
+}
+
+func (s *StubStorage) GetShortURL(srcURL string) (string, bool) {
+	for k, v := range s.data {
+		if v == srcURL {
+			return k, true
+		}
+	}
+
+	return "", false
 }
