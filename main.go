@@ -37,25 +37,28 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	switch path {
-	case "/":
-		homeHandler(w, r)
-	case "/short":
-		s.shortenerHandler(w, r)
-	default:
-		shortURL := "localhost:8080" + path
+func (s *Server) redirectHandler(shortURL string, fallback http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		srcURL, ok := s.urls[shortURL]
 		fmt.Println(shortURL, srcURL, ok)
-		if !ok {
-			http.NotFound(w, r)
+		if ok {
+			http.Redirect(w, r, srcURL, http.StatusFound)
 			return
 		}
-		http.Redirect(w, r, srcURL, http.StatusFound)
+		fallback(w, r)
 	}
+}
 
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	router := http.NewServeMux()
+
+	path := r.URL.Path
+	shortURL := "localhost:8080" + path
+
+	router.HandleFunc("/", s.redirectHandler(shortURL, http.NotFound))
+	router.HandleFunc("/short", s.shortenerHandler)
+
+	router.ServeHTTP(w, r)
 }
 
 func main() {

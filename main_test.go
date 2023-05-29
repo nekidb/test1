@@ -11,14 +11,6 @@ func TestServer(t *testing.T) {
 	shortener := StubShortener{}
 	server := NewServer(shortener)
 
-	t.Run("request home page", func(t *testing.T) {
-		request := createGetRequest("/")
-		response := httptest.NewRecorder()
-
-		server.ServeHTTP(response, request)
-
-		assertResponseBody(t, response.Body.String(), "Welcome to best URL shortener!")
-	})
 	t.Run("not found page", func(t *testing.T) {
 		request := createGetRequest("/somepage")
 		response := httptest.NewRecorder()
