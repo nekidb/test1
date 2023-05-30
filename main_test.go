@@ -9,57 +9,73 @@ import (
 	"testing"
 )
 
-const srcURL = `https://github.com/nekidb`
+const (
+	host      = "localhost:8080"
+	srcURL    = "https://github.com/nekidb"
+	shortPath = "/shorted"
+)
 
-func TestServer(t *testing.T) {
+func TestBadRequest(t *testing.T) {
 	storage := &StubStorage{nil}
 	shortener := StubShortener{}
-	server := NewServer(storage, shortener)
+	server := NewServer(host, storage, shortener)
 
-	t.Run("server returns data when good request", func(t *testing.T) {
-		reqBody := createRequestBody(t, srcURL)
-		request := createPutRequest("/", reqBody)
+	t.Run("POST request with bad input data", func(t *testing.T) {
+		request := createPostRequest(t, "/", "")
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
 
-		assertStatusCode(t, response.Code, http.StatusOK)
-		assertResponseBody(t, response.Body.String(), srcURL)
+		assertStatusCode(t, response.Code, http.StatusBadRequest)
 	})
+	t.Run("POST request with wrong path", func(t *testing.T) {
+		request := createPostRequest(t, "/somepage", srcURL)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatusCode(t, response.Code, http.StatusBadRequest)
+	})
+	t.Run("empty GET request", func(t *testing.T) {
+		request := createGetRequest("/")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatusCode(t, response.Code, http.StatusNotFound)
+		assertResponseBody(t, response.Body.String(), "Page not found")
+	})
+
 }
 
-// func TestServer(t *testing.T) {
-// 	storage := &StubStorage{nil}
-// 	shortener := StubShortener{}
-// 	server := NewServer(storage, shortener)
-//
-// 	t.Run("not found page", func(t *testing.T) {
-// 		request := createGetRequest("/somepage")
-// 		response := httptest.NewRecorder()
-//
-// 		server.ServeHTTP(response, request)
-//
-// 		assertStatusCode(t, response.Code, http.StatusNotFound)
-// 		assertResponseBody(t, response.Body.String(), "404 page not found\n")
-// 	})
-// }
+func TestServer(t *testing.T) {
+	storage := NewStubStorage()
+	storage.Put(shortPath, srcURL)
 
-// func TestServerRedirecting(t *testing.T) {
-// 	shortPath, srcURL := "/shortpath", "https://github.com/nekidb"
-// 	storage := &StubStorage{data: make(map[string]string)}
-// 	storage.Put(shortPath, srcURL)
-//
-// 	shortener := StubShortener{}
-// 	server := NewServer(storage, shortener)
-//
-// 	request := createGetRequest(shortPath)
-// 	response := httptest.NewRecorder()
-//
-// 	server.ServeHTTP(response, request)
-//
-// 	assertStatusCode(t, response.Code, http.StatusFound)
-// 	assertLocation(t, response.Header().Get("Location"), srcURL)
-// }
+	shortener := StubShortener{}
+	server := NewServer(host, storage, shortener)
+
+	t.Run("server returns correct shortURL", func(t *testing.T) {
+		request := createPostRequest(t, "/", srcURL)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		want := createExpectedOutput(t, host, shortPath)
+		assertStatusCode(t, response.Code, http.StatusOK)
+		assertResponseBody(t, response.Body.String(), want)
+	})
+	t.Run("redirect to source URL", func(t *testing.T) {
+		request := createGetRequest(shortPath)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatusCode(t, response.Code, http.StatusFound)
+		assertLocation(t, response.Header().Get("Location"), srcURL)
+
+	})
+}
 
 func assertResponseBody(t *testing.T, got, want string) {
 	t.Helper()
@@ -83,10 +99,9 @@ func assertLocation(t *testing.T, got, want string) {
 	}
 }
 
-func createRequestBody(t *testing.T, srcURL string) io.Reader {
+func createRequestBody(t *testing.T, inputData any) io.Reader {
 	t.Helper()
 
-	inputData := InputData{srcURL}
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(inputData)
 	if err != nil {
@@ -95,12 +110,25 @@ func createRequestBody(t *testing.T, srcURL string) io.Reader {
 	return buf
 }
 
-func createPutRequest(path string, body io.Reader) *http.Request {
-	return httptest.NewRequest(http.MethodPost, path, body)
+func createPostRequest(t *testing.T, path, srcURL string) *http.Request {
+	inputData := InputData{srcURL}
+	reqBody := createRequestBody(t, inputData)
+	return httptest.NewRequest(http.MethodPost, path, reqBody)
 }
 
 func createGetRequest(path string) *http.Request {
 	return httptest.NewRequest(http.MethodGet, path, nil)
+}
+
+func createExpectedOutput(t *testing.T, host, shortPath string) string {
+	t.Helper()
+
+	v := OutputData{host + shortPath}
+	out, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out)
 }
 
 type StubShortener struct{}
@@ -111,6 +139,12 @@ func (s StubShortener) MakeShortPath() string {
 
 type StubStorage struct {
 	data map[string]string
+}
+
+func NewStubStorage() *StubStorage {
+	return &StubStorage{
+		data: make(map[string]string),
+	}
 }
 
 func (s *StubStorage) Put(shortURL, srcURL string) {
