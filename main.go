@@ -1,8 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
-	"strings"
 )
 
 type Shortener interface {
@@ -28,12 +29,14 @@ func NewServer(storage Storage, shortener Shortener) *Server {
 }
 
 func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
-	srcURL := strings.TrimSuffix(strings.TrimPrefix(r.URL.RawQuery, "url=%22"), "%22")
-	shortPath := s.shortener.MakeShortPath()
-
-	s.storage.Put(shortPath, srcURL)
-
-	w.Write([]byte(shortPath))
+	if r.URL.Path == "/" {
+		inputData := &InputData{}
+		err := json.NewDecoder(r.Body).Decode(inputData)
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.Write([]byte(inputData.URL))
+	}
 }
 
 func (s *Server) redirectHandler(shortPath string, fallback http.HandlerFunc) http.HandlerFunc {
@@ -47,12 +50,13 @@ func (s *Server) redirectHandler(shortPath string, fallback http.HandlerFunc) ht
 	}
 }
 
+type InputData struct {
+	URL string `json:"url"`
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router := http.NewServeMux()
-
-	path := r.URL.Path
-	router.HandleFunc("/", s.redirectHandler(path, http.NotFound))
-	router.HandleFunc("/short", s.shortenerHandler)
+	router.HandleFunc("/", s.shortenerHandler)
 
 	router.ServeHTTP(w, r)
 }
