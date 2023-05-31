@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	host      = "localhost:8080"
+	host      = "localhost"
+	port      = ":8080"
 	srcURL    = "https://github.com/nekidb"
 	shortPath = "/shorted"
 )
@@ -18,7 +19,7 @@ const (
 func TestBadRequest(t *testing.T) {
 	storage := &StubStorage{nil}
 	shortener := StubShortener{}
-	server := NewServer(host, storage, shortener)
+	server := NewServer(host, port, storage, shortener)
 
 	t.Run("POST request with bad input data", func(t *testing.T) {
 		request := createPostRequest(t, "/", "")
@@ -53,7 +54,7 @@ func TestServer(t *testing.T) {
 	storage.Put(shortPath, srcURL)
 
 	shortener := StubShortener{}
-	server := NewServer(host, storage, shortener)
+	server := NewServer(host, port, storage, shortener)
 
 	t.Run("server returns correct shortURL", func(t *testing.T) {
 		request := createPostRequest(t, "/", srcURL)
@@ -61,7 +62,7 @@ func TestServer(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		want := createExpectedOutput(t, host, shortPath)
+		want := createExpectedOutput(t, host, port, shortPath)
 		assertStatusCode(t, response.Code, http.StatusOK)
 		assertResponseBody(t, response.Body.String(), want)
 	})
@@ -120,10 +121,10 @@ func createGetRequest(path string) *http.Request {
 	return httptest.NewRequest(http.MethodGet, path, nil)
 }
 
-func createExpectedOutput(t *testing.T, host, shortPath string) string {
+func createExpectedOutput(t *testing.T, host, port, shortPath string) string {
 	t.Helper()
 
-	v := OutputData{host + shortPath}
+	v := OutputData{host + port + shortPath}
 	out, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
@@ -147,21 +148,22 @@ func NewStubStorage() *StubStorage {
 	}
 }
 
-func (s *StubStorage) Put(shortURL, srcURL string) {
+func (s *StubStorage) Put(shortURL, srcURL string) error {
 	s.data[shortURL] = srcURL
+	return nil
 }
 
-func (s *StubStorage) GetSrcURL(shortPath string) (string, bool) {
-	srcURL, ok := s.data[shortPath]
-	return srcURL, ok
+func (s *StubStorage) GetSrcURL(shortPath string) (string, error) {
+	srcURL, _ := s.data[shortPath]
+	return srcURL, nil
 }
 
-func (s *StubStorage) GetShortPath(srcURL string) (string, bool) {
+func (s *StubStorage) GetShortPath(srcURL string) (string, error) {
 	for k, v := range s.data {
 		if v == srcURL {
-			return k, true
+			return k, nil
 		}
 	}
 
-	return "", false
+	return "", nil
 }

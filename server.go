@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"path"
 )
@@ -12,9 +11,9 @@ type Shortener interface {
 }
 
 type Storage interface {
-	Put(shortURL, srcURL string)
-	GetSrcURL(shortPath string) (string, bool)
-	GetShortPath(srcURL string) (string, bool)
+	Put(shortPath, srcURL string) error
+	GetSrcURL(shortPath string) (string, error)
+	GetShortPath(srcURL string) (string, error)
 }
 
 type InputData struct {
@@ -26,17 +25,22 @@ type OutputData struct {
 }
 
 type Server struct {
-	host      string
-	storage   Storage
-	shortener Shortener
+	host, port string
+	storage    Storage
+	shortener  Shortener
 }
 
-func NewServer(host string, storage Storage, shortener Shortener) *Server {
+func NewServer(host, port string, storage Storage, shortener Shortener) *Server {
 	return &Server{
 		host:      host,
+		port:      port,
 		storage:   storage,
 		shortener: shortener,
 	}
+}
+
+func (s *Server) internalErrorHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func (s *Server) badRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -51,12 +55,13 @@ func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		s.badRequestHandler(w, r)
+		return
 	}
 
 	inputData := &InputData{}
 	err := json.NewDecoder(r.Body).Decode(inputData)
 	if err != nil {
-		s.badRequestHandler(w, r)
+		s.internalErrorHandler(w, r)
 		return
 	}
 	if inputData.URL == "" {
@@ -65,14 +70,38 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	srcURL := inputData.URL
-	shortPath, _ := s.storage.GetShortPath(srcURL)
-	shortURL := path.Join(s.host, shortPath)
 
-	output, err := makeOutputJSON(shortURL)
+	// Check if source URL exists in dabase
+	shortPath, err := s.storage.GetShortPath(srcURL)
 	if err != nil {
-		log.Fatal(err)
+		s.internalErrorHandler(w, r)
 	}
-	w.Write(output)
+	if shortPath != "" {
+		// If found, then return corresponding short URL
+		shortURL := path.Join(s.host+s.port, shortPath)
+
+		output, err := makeOutputJSON(shortURL)
+		if err != nil {
+			s.internalErrorHandler(w, r)
+			return
+		}
+		w.Write(output)
+	} else {
+		// If not found in database, then make new short path
+		shortPath = s.shortener.MakeShortPath()
+
+		s.storage.Put(shortPath, srcURL)
+
+		shortURL := path.Join(s.host+s.port, shortPath)
+
+		output, err := makeOutputJSON(shortURL)
+		if err != nil {
+			s.internalErrorHandler(w, r)
+			return
+		}
+		w.Write(output)
+
+	}
 }
 
 func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
@@ -82,10 +111,17 @@ func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	srcURL, ok := s.storage.GetSrcURL(path)
-	if ok {
-		http.Redirect(w, r, srcURL, http.StatusFound)
+	srcURL, err := s.storage.GetSrcURL(path)
+	if err != nil {
+		s.internalErrorHandler(w, r)
 	}
+
+	if srcURL == "" {
+		s.notFoundHandler(w, r)
+		return
+	}
+
+	http.Redirect(w, r, srcURL, http.StatusFound)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -1,13 +1,23 @@
 package main
 
 import (
+	"log"
 	"net/http"
 )
 
 func main() {
-	storage := NewSimpleStorage()
-	storage.Put("/lolkek", "https://github.com/nekidb")
+	const (
+		host     = "localhost"
+		port     = ":8080"
+		database = "urls.db"
+	)
+	storage, err := NewBoltStorage(database)
+	if err != nil {
+		log.Fatal(err)
+	}
 	shortener := SimpleShortener{}
-	server := NewServer("localhost:8080", storage, shortener)
-	http.ListenAndServe(":8080", server)
+	server := NewServer(host, port, storage, shortener)
+
+	log.Printf("Starting server on %s%s", host, port)
+	log.Println(http.ListenAndServe(port, server))
 }
