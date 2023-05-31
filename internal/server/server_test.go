@@ -14,6 +14,7 @@ const (
 	port      = ":8080"
 	srcURL    = "https://github.com/nekidb"
 	shortPath = "/shorted"
+	badSrcURL = "github.com"
 )
 
 func TestBadRequest(t *testing.T) {
@@ -22,7 +23,7 @@ func TestBadRequest(t *testing.T) {
 	server := NewServer(host, port, storage, shortener)
 
 	t.Run("POST request with bad input data", func(t *testing.T) {
-		request := createPostRequest(t, "/", "")
+		request := createPostRequest(t, "/", badSrcURL)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -136,6 +137,13 @@ type StubShortener struct{}
 
 func (s StubShortener) MakeShortPath() string {
 	return "/shorted"
+}
+
+func (s StubShortener) ValidateURL(url string) (bool, error) {
+	if url == badSrcURL {
+		return false, nil
+	}
+	return true, nil
 }
 
 type StubStorage struct {

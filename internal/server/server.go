@@ -8,6 +8,7 @@ import (
 
 type Shortener interface {
 	MakeShortPath() string
+	ValidateURL(url string) (bool, error)
 }
 
 type Storage interface {
@@ -64,12 +65,18 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 		s.internalErrorHandler(w, r)
 		return
 	}
-	if inputData.URL == "" {
+
+	srcURL := inputData.URL
+
+	ok, err := s.shortener.ValidateURL(srcURL)
+	if err != nil {
+		s.internalErrorHandler(w, r)
+		return
+	}
+	if !ok {
 		s.badRequestHandler(w, r)
 		return
 	}
-
-	srcURL := inputData.URL
 
 	// Check if source URL exists in dabase
 	shortPath, err := s.storage.GetShortPath(srcURL)
