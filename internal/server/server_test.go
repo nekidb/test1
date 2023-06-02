@@ -113,7 +113,7 @@ func createRequestBody(t *testing.T, inputData any) io.Reader {
 }
 
 func createPostRequest(t *testing.T, path, srcURL string) *http.Request {
-	inputData := InputData{srcURL}
+	inputData := inputData{srcURL}
 	reqBody := createRequestBody(t, inputData)
 	return httptest.NewRequest(http.MethodPost, path, reqBody)
 }
@@ -125,7 +125,7 @@ func createGetRequest(path string) *http.Request {
 func createExpectedOutput(t *testing.T, host, port, shortPath string) string {
 	t.Helper()
 
-	v := OutputData{host + port + shortPath}
+	v := outputData{host + port + shortPath}
 	out, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)

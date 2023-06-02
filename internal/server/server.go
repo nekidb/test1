@@ -17,14 +17,6 @@ type Storage interface {
 	GetShortPath(srcURL string) (string, error)
 }
 
-type InputData struct {
-	URL string `json:"url"`
-}
-
-type OutputData struct {
-	ShortURL string `json:"shortURL"`
-}
-
 type Server struct {
 	host, port string
 	storage    Storage
@@ -40,17 +32,21 @@ func NewServer(host, port string, storage Storage, shortener Shortener) *Server 
 	}
 }
 
-func (s *Server) internalErrorHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusInternalServerError)
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		s.shortenerHandler(w, r)
+	case http.MethodGet:
+		s.redirectHandler(w, r)
+	}
 }
 
-func (s *Server) badRequestHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
+type inputData struct {
+	URL string `json:"url"`
 }
 
-func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("Page not found"))
+type outputData struct {
+	ShortURL string `json:"shortURL"`
 }
 
 func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +55,7 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inputData := &InputData{}
+	inputData := &inputData{}
 	err := json.NewDecoder(r.Body).Decode(inputData)
 	if err != nil {
 		s.internalErrorHandler(w, r)
@@ -131,17 +127,21 @@ func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, srcURL, http.StatusFound)
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		s.shortenerHandler(w, r)
-	case http.MethodGet:
-		s.redirectHandler(w, r)
-	}
+func (s *Server) internalErrorHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+func (s *Server) badRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
+}
+
+func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("Page not found"))
 }
 
 func makeOutputJSON(url string) ([]byte, error) {
-	outputData := OutputData{url}
+	outputData := outputData{url}
 	out, err := json.Marshal(outputData)
 	if err != nil {
 		return nil, err
