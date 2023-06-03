@@ -39,10 +39,12 @@ func isGoodHost(host string) bool {
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func generateString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	var sb strings.Builder
+	sb.Grow(n)
+
+	for i := 0; i < n; i++ {
+		sb.WriteByte(letters[rand.Intn(len(letters))])
 	}
 
-	return string(b)
+	return sb.String()
 }
