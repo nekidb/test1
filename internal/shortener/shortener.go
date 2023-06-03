@@ -9,9 +9,8 @@ import (
 type SimpleShortener struct{}
 
 func (s SimpleShortener) GetShortPath() string {
-	str := generateString(5)
-
-	return "/" + str
+	length := 5
+	return generatePath(length)
 }
 
 func (s SimpleShortener) ValidateURL(str string) (bool, error) {
@@ -38,10 +37,11 @@ func isGoodHost(host string) bool {
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func generateString(n int) string {
+func generatePath(n int) string {
 	var sb strings.Builder
 	sb.Grow(n)
 
+	sb.WriteString("/")
 	for i := 0; i < n; i++ {
 		sb.WriteByte(letters[rand.Intn(len(letters))])
 	}
