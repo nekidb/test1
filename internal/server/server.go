@@ -11,7 +11,7 @@ type Shortener interface {
 	ValidateURL(url string) (bool, error)
 }
 
-type Storage interface {
+type URLStorage interface {
 	Put(shortPath, srcURL string) error
 	GetSrcURL(shortPath string) (string, error)
 	GetShortPath(srcURL string) (string, error)
@@ -19,11 +19,11 @@ type Storage interface {
 
 type Server struct {
 	host, port string
-	storage    Storage
+	storage    URLStorage
 	shortener  Shortener
 }
 
-func NewServer(host, port string, storage Storage, shortener Shortener) *Server {
+func NewServer(host, port string, storage URLStorage, shortener Shortener) *Server {
 	return &Server{
 		host:      host,
 		port:      port,
