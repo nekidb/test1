@@ -3,7 +3,8 @@ package storage
 import "github.com/boltdb/bolt"
 
 type BoltStorage struct {
-	dbName, bucketName string
+	dbName     string
+	bucketName []byte
 }
 
 func NewBoltStorage(dbName string) (*BoltStorage, error) {
@@ -13,9 +14,9 @@ func NewBoltStorage(dbName string) (*BoltStorage, error) {
 	}
 	defer db.Close()
 
-	bucketName := "urlBucket"
+	bucketName := []byte("urlBucket")
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		_, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
 			return err
 		}
