@@ -47,11 +47,8 @@ func (s *BoltStorage) Put(shortPath, srcURL string) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (s *BoltStorage) GetSrcURL(shortPath string) (string, error) {
