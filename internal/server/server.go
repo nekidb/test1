@@ -7,7 +7,7 @@ import (
 )
 
 type Shortener interface {
-	MakeShortPath() string
+	GetShortPath() string
 	ValidateURL(url string) (bool, error)
 }
 
@@ -91,7 +91,7 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(output)
 	} else {
 		// If not found in database, then make new short path
-		shortPath = s.shortener.MakeShortPath()
+		shortPath = s.shortener.GetShortPath()
 
 		s.storage.Put(shortPath, srcURL)
 

@@ -8,7 +8,7 @@ import (
 
 type SimpleShortener struct{}
 
-func (s SimpleShortener) MakeShortPath() string {
+func (s SimpleShortener) GetShortPath() string {
 	str := generateString(5)
 
 	return "/" + str

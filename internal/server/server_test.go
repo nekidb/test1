@@ -135,7 +135,7 @@ func createExpectedOutput(t *testing.T, host, port, shortPath string) string {
 
 type StubShortener struct{}
 
-func (s StubShortener) MakeShortPath() string {
+func (s StubShortener) GetShortPath() string {
 	return "/shorted"
 }
 
