@@ -3,31 +3,22 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
+	"strings"
+
+	"github.com/nekidb/test1/internal/shortener"
 )
-
-type Shortener interface {
-	GetShortPath() string
-	ValidateURL(url string) (bool, error)
-}
-
-type URLStorage interface {
-	Put(shortPath, srcURL string) error
-	GetSrcURL(shortPath string) (string, error)
-	GetShortPath(srcURL string) (string, error)
-}
 
 type Server struct {
 	host, port string
-	storage    URLStorage
-	shortener  Shortener
+	shortener  *shortener.ShortenerService
 }
 
-func NewServer(host, port string, storage URLStorage, shortener Shortener) *Server {
+func NewServer(host, port string, shortener *shortener.ShortenerService) *Server {
 	return &Server{
 		host:      host,
 		port:      port,
-		storage:   storage,
 		shortener: shortener,
 	}
 }
@@ -64,7 +55,7 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 
 	srcURL := inputData.URL
 
-	ok, err := s.shortener.ValidateURL(srcURL)
+	ok, err := validateURL(srcURL)
 	if err != nil {
 		s.internalErrorHandler(w, r)
 		return
@@ -74,37 +65,19 @@ func (s *Server) shortenerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if source URL exists in dabase
-	shortPath, err := s.storage.GetShortPath(srcURL)
+	shortPath, err := s.shortener.GetShortPath(srcURL)
 	if err != nil {
 		s.internalErrorHandler(w, r)
 	}
-	if shortPath != "" {
-		// If found, then return corresponding short URL
-		shortURL := path.Join(s.host+s.port, shortPath)
 
-		output, err := makeOutputJSON(shortURL)
-		if err != nil {
-			s.internalErrorHandler(w, r)
-			return
-		}
-		w.Write(output)
-	} else {
-		// If not found in database, then make new short path
-		shortPath = s.shortener.GetShortPath()
+	shortURL := path.Join(s.host+s.port, shortPath)
 
-		s.storage.Put(shortPath, srcURL)
-
-		shortURL := path.Join(s.host+s.port, shortPath)
-
-		output, err := makeOutputJSON(shortURL)
-		if err != nil {
-			s.internalErrorHandler(w, r)
-			return
-		}
-		w.Write(output)
-
+	output, err := makeOutputJSON(shortURL)
+	if err != nil {
+		s.internalErrorHandler(w, r)
+		return
 	}
+	w.Write(output)
 }
 
 func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +87,8 @@ func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	srcURL, err := s.storage.GetSrcURL(path)
+	trimmed := strings.TrimPrefix(path, "/")
+	srcURL, err := s.shortener.GetSourceURL(trimmed)
 	if err != nil {
 		s.internalErrorHandler(w, r)
 	}
@@ -148,4 +122,26 @@ func makeOutputJSON(url string) ([]byte, error) {
 	}
 
 	return out, nil
+}
+
+func validateURL(str string) (bool, error) {
+	u, err := url.Parse(str)
+	if err != nil {
+		return false, err
+	}
+
+	if u.Scheme == "" || !isGoodHost(u.Host) {
+		return false, nil
+	}
+	return true, nil
+}
+
+func isGoodHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	if !strings.Contains(host, ".") {
+		return false
+	}
+	return true
 }

@@ -58,27 +58,6 @@ func (s ShortenerService) DeleteSourceURL(srcURL string) error {
 	return nil
 }
 
-//	func (s ShortenerService) ValidateURL(str string) (bool, error) {
-//		u, err := url.Parse(str)
-//		if err != nil {
-//			return false, err
-//		}
-//
-//		if u.Scheme == "" || !isGoodHost(u.Host) {
-//			return false, nil
-//		}
-//		return true, nil
-//	}
-//
-//	func isGoodHost(host string) bool {
-//		if host == "" {
-//			return false
-//		}
-//		if !strings.Contains(host, ".") {
-//			return false
-//		}
-//		return true
-//	}
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func (s ShortenerService) generateRandomPath(n int) string {
