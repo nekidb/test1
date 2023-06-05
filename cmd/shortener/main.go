@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/nekidb/test1/internal/config"
@@ -28,5 +27,5 @@ func main() {
 	server := server.NewServer(config.Host, config.Port, shortener)
 
 	log.Printf("Starting server on %s%s", config.Host, config.Port)
-	log.Println(http.ListenAndServe(config.Port, server))
+	log.Println(server.Serve())
 }
