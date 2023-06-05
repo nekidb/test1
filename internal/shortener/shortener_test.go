@@ -87,28 +87,30 @@ func NewMockStorage() *MockStorage {
 	}
 }
 
-func (s *MockStorage) Save(str1, str2 string) {
+func (s *MockStorage) Save(str1, str2 string) error {
 	s.data[str1] = str2
+	return nil
 }
 
-func (s *MockStorage) GetShortPath(str string) string {
+func (s *MockStorage) GetShortPath(str string) (string, error) {
 	for k, v := range s.data {
 		if v == str {
-			return k
+			return k, nil
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
-func (s *MockStorage) GetSourceURL(str string) string {
-	return s.data[str]
+func (s *MockStorage) GetSourceURL(str string) (string, error) {
+	return s.data[str], nil
 }
 
-func (s *MockStorage) DeleteSourceURL(str string) {
+func (s *MockStorage) DeleteSourceURL(str string) error {
 	for k, v := range s.data {
 		if v == str {
 			delete(s.data, k)
 		}
 	}
+	return nil
 }

@@ -32,7 +32,7 @@ func NewBoltStorage(dbName string) (*BoltStorage, error) {
 	}, nil
 }
 
-func (s *BoltStorage) Put(shortPath, srcURL string) error {
+func (s *BoltStorage) Save(shortPath, srcURL string) error {
 	db, err := bolt.Open(s.dbName, 0600, nil)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (s *BoltStorage) Put(shortPath, srcURL string) error {
 	return err
 }
 
-func (s *BoltStorage) GetSrcURL(shortPath string) (string, error) {
+func (s *BoltStorage) GetSourceURL(shortPath string) (string, error) {
 	db, err := bolt.Open(s.dbName, 0600, nil)
 	if err != nil {
 		return "", err
@@ -96,4 +96,9 @@ func (s *BoltStorage) GetShortPath(srcURL string) (string, error) {
 	})
 
 	return shortPath, nil
+}
+
+func (s *BoltStorage) DeleteSourceURL(srcURL string) error {
+
+	return nil
 }

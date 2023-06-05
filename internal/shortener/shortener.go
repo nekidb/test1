@@ -13,10 +13,10 @@ type Shortener interface {
 }
 
 type URLStorage interface {
-	Save(shortPath, srcURL string)
-	GetShortPath(srcURL string) string
-	GetSourceURL(shortPath string) string
-	DeleteSourceURL(srcURL string)
+	Save(shortPath, srcURL string) error
+	GetShortPath(srcURL string) (string, error)
+	GetSourceURL(shortPath string) (string, error)
+	DeleteSourceURL(srcURL string) error
 }
 
 type ShortenerService struct {
@@ -31,7 +31,10 @@ func NewShortenerService(storage URLStorage) (*ShortenerService, error) {
 
 func (s ShortenerService) GetShortPath(srcURL string) (string, error) {
 	// Check if exists in DB
-	shortPath := s.storage.GetShortPath(srcURL)
+	shortPath, err := s.storage.GetShortPath(srcURL)
+	if err != nil {
+		return "", err
+	}
 	if shortPath != "" {
 		return shortPath, nil
 	}
@@ -40,7 +43,9 @@ func (s ShortenerService) GetShortPath(srcURL string) (string, error) {
 	length := 6
 	shortPath = s.generateRandomPath(length)
 
-	s.storage.Save(shortPath, srcURL)
+	if err := s.storage.Save(shortPath, srcURL); err != nil {
+		return "", err
+	}
 
 	return shortPath, nil
 }
@@ -49,13 +54,11 @@ func (s ShortenerService) GetSourceURL(shortPath string) (string, error) {
 	// Check if shortPath is correct
 
 	// Get from DB if exists. If not, then return empty string
-	srcURL := s.storage.GetSourceURL(shortPath)
-	return srcURL, nil
+	return s.storage.GetSourceURL(shortPath)
 }
 
 func (s ShortenerService) DeleteSourceURL(srcURL string) error {
-	s.storage.DeleteSourceURL(srcURL)
-	return nil
+	return s.storage.DeleteSourceURL(srcURL)
 }
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
