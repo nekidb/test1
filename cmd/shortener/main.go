@@ -21,6 +21,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer storage.Close()
+
 	shortener, _ := shortener.NewShortenerService(storage)
 
 	server := server.NewServer(config.Host, config.Port, shortener)
