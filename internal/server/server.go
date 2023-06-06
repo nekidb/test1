@@ -25,18 +25,16 @@ type Server struct {
 }
 
 func NewServer(host, port string, shortener *shortener.ShortenerService) *Server {
-	router := chi.NewRouter()
-
-	server := &Server{
+	server := Server{
 		host:      host,
 		port:      port,
 		shortener: shortener,
-		router:    router,
+		router:    chi.NewRouter(),
 	}
 
 	server.initRouter()
 
-	return server
+	return &server
 }
 
 func (s *Server) Serve() error {
