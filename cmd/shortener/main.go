@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net"
 	"os"
+	"os/signal"
 
 	"github.com/nekidb/test1/internal/config"
 	"github.com/nekidb/test1/internal/server"
 	"github.com/nekidb/test1/internal/shortener"
 	"github.com/nekidb/test1/internal/storage"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -22,10 +26,34 @@ func main() {
 	}
 	defer storage.Close()
 
-	shortener, _ := shortener.NewShortenerService(storage)
+	shortener, err := shortener.NewShortenerService(storage)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	server := server.NewServer(config.Host, config.Port, shortener)
+	server := server.NewServer(shortener)
 
-	log.Printf("Starting server on %s%s", config.Host, config.Port)
-	log.Println(server.Serve())
+	ln, err := net.Listen("tcp", config.Host+config.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	appContext, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	g, gCtx := errgroup.WithContext(appContext)
+
+	g.Go(func() error {
+		return server.Serve(ln)
+	})
+
+	g.Go(func() error {
+		<-gCtx.Done()
+
+		return server.Shutdown()
+	})
+
+	if err := g.Wait(); err != nil {
+		log.Fatal(err)
+	}
 }

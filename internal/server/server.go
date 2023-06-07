@@ -1,8 +1,10 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -19,26 +21,32 @@ var (
 )
 
 type Server struct {
-	host, port string
-	shortener  *shortener.ShortenerService
-	router     *chi.Mux
+	server    *http.Server
+	shortener *shortener.ShortenerService
+	router    *chi.Mux
 }
 
-func NewServer(host, port string, shortener *shortener.ShortenerService) *Server {
-	server := Server{
-		host:      host,
-		port:      port,
+func NewServer(shortener *shortener.ShortenerService) *Server {
+	srv := Server{
+		server:    &http.Server{},
 		shortener: shortener,
 		router:    chi.NewRouter(),
 	}
 
-	server.initRouter()
+	srv.initRouter()
 
-	return &server
+	return &srv
 }
 
-func (s *Server) Serve() error {
-	return http.ListenAndServe(":8080", s.router)
+func (s *Server) Serve(ln net.Listener) error {
+	srv := &http.Server{
+		Handler: s.router,
+	}
+	return srv.Serve(ln)
+}
+
+func (s *Server) Shutdown() error {
+	return s.server.Shutdown(context.Background())
 }
 
 func (s *Server) initRouter() {
@@ -80,7 +88,8 @@ func (s *Server) shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := path.Join(s.host+s.port, "s", shortPath)
+	// todo: need to store somewhere host and port
+	shortURL := path.Join("localhost:8080", "s", shortPath)
 
 	output, err := makeOutputJSON(shortURL)
 	if err != nil {
@@ -88,6 +97,7 @@ func (s *Server) shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write(output)
 }
 
