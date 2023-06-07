@@ -50,8 +50,12 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) initRouter() {
+	shortenRouter := chi.NewRouter()
+	shortenRouter.Use(s.validationMiddleware)
+	shortenRouter.Post("/", s.shortenHandler)
+	s.router.Mount("/api/shorten", shortenRouter)
+
 	s.router.Get("/s/{short}", s.redirectHandler)
-	s.router.Post("/api/shorten", s.shortenHandler)
 
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		s.handleError(w, http.StatusNotFound)
@@ -67,19 +71,31 @@ type outputData struct {
 	ShortURL string `json:"shortURL"`
 }
 
+func (s *Server) validationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		inputData := &inputData{}
+		if err := json.NewDecoder(r.Body).Decode(inputData); err != nil {
+			s.handleError(w, http.StatusBadRequest)
+			return
+		}
+
+		srcURL := inputData.URL
+
+		err := validateURL(srcURL)
+		if err != nil {
+			s.handleError(w, http.StatusBadRequest)
+			return
+		}
+
+		c := context.WithValue(context.Background(), "srcURL", srcURL)
+		next.ServeHTTP(w, r.WithContext(c))
+	})
+}
+
 func (s *Server) shortenHandler(w http.ResponseWriter, r *http.Request) {
-	inputData := &inputData{}
-	if err := json.NewDecoder(r.Body).Decode(inputData); err != nil {
+	srcURL, ok := r.Context().Value("srcURL").(string)
+	if srcURL == "" || !ok {
 		s.handleError(w, http.StatusBadRequest)
-		return
-	}
-
-	srcURL := inputData.URL
-
-	err := validateURL(srcURL)
-	if err != nil {
-		s.handleError(w, http.StatusBadRequest)
-		return
 	}
 
 	shortPath, err := s.shortener.GetShortPath(srcURL)
