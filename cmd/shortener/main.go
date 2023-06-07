@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -16,7 +18,10 @@ import (
 )
 
 func main() {
-	config, err := config.Get(os.DirFS("."), "config.json")
+	configFile := flag.String("config", "config.json", "config file name")
+	flag.Parse()
+
+	config, err := config.Get(os.DirFS("."), *configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,6 +56,7 @@ func main() {
 	g.Go(func() error {
 		<-gCtx.Done()
 
+		fmt.Println("Shutting down")
 		return server.Shutdown()
 	})
 
