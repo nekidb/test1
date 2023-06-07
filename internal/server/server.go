@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,12 +11,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nekidb/test1/internal/shortener"
-)
-
-var (
-	errService    = errors.New("service error")
-	errBadRequest = errors.New("bad request")
-	errNotFound   = errors.New("not found")
 )
 
 type Server struct {
