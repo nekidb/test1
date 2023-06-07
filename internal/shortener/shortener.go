@@ -41,7 +41,19 @@ func (s ShortenerService) GetShortPath(srcURL string) (string, error) {
 
 	// If not exists in DB, then create new
 	length := 6
-	shortPath = s.generateRandomPath(length)
+
+	for {
+		shortPath = s.generateRandomPath(length)
+
+		found, err := s.storage.GetSourceURL(shortPath)
+		if err != nil {
+			return "", err
+		}
+
+		if found == "" {
+			break
+		}
+	}
 
 	if err := s.storage.Save(shortPath, srcURL); err != nil {
 		return "", err
@@ -65,6 +77,7 @@ const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func (s ShortenerService) generateRandomPath(n int) string {
 	var sb strings.Builder
+
 	sb.Grow(n)
 
 	for i := 0; i < n; i++ {
