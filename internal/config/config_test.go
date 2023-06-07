@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"testing"
 	"testing/fstest"
 )
@@ -9,28 +8,27 @@ import (
 func TestConfig(t *testing.T) {
 	filename := "somefile"
 
-	config := Config{
+	data := []byte(`{"host":"somehost","port":"someport","db":"somedb"}`)
+	want := Config{
 		Host: "somehost",
 		Port: "someport",
 		DB:   "somedb",
 	}
 
-	fs := createFsWithConfig(t, filename, config)
+	fs := createFsWithData(t, filename, data)
 
-	got, _ := Get(fs, filename)
-	want := config
+	got, err := Get(fs, filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if *got != want {
 		t.Errorf("got %#v, want %#v", got, want)
 	}
 }
 
-func createFsWithConfig(t *testing.T, filename string, config Config) fstest.MapFS {
+func createFsWithData(t *testing.T, filename string, data []byte) fstest.MapFS {
 	t.Helper()
-
-	data, err := json.Marshal(config)
-	if err != nil {
-		t.Fatal("marshal test config: ", err)
-	}
 
 	fs := fstest.MapFS{
 		filename: &fstest.MapFile{
