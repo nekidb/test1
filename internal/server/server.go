@@ -53,6 +53,7 @@ func (s *Server) initRouter() {
 	shortenRouter := chi.NewRouter()
 	shortenRouter.Use(s.validationMiddleware)
 	shortenRouter.Post("/", s.shortenHandler)
+	shortenRouter.Delete("/", s.deleteSourceHandler)
 	s.router.Mount("/api/shorten", shortenRouter)
 
 	s.router.Get("/s/{short}", s.redirectHandler)
@@ -87,13 +88,14 @@ func (s *Server) validationMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		c := context.WithValue(context.Background(), "srcURL", srcURL)
+		c := context.WithValue(r.Context(), "srcURL", srcURL)
 		next.ServeHTTP(w, r.WithContext(c))
 	})
 }
 
 func (s *Server) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	srcURL, ok := r.Context().Value("srcURL").(string)
+	// srcURL, ok := "https://github.com/xenking", true
 	if srcURL == "" || !ok {
 		s.handleError(w, http.StatusBadRequest)
 	}
@@ -132,6 +134,19 @@ func (s *Server) redirectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, srcURL, http.StatusFound)
+}
+
+func (s *Server) deleteSourceHandler(w http.ResponseWriter, r *http.Request) {
+	srcURL, ok := r.Context().Value("srcURL").(string)
+	if srcURL == "" || !ok {
+		s.handleError(w, http.StatusBadRequest)
+	}
+
+	if err := s.shortener.DeleteSourceURL(srcURL); err != nil {
+		s.handleError(w, http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) handleError(w http.ResponseWriter, code int) {

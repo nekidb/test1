@@ -37,7 +37,7 @@ func (s *BoltStorage) Close() {
 
 func (s *BoltStorage) Save(shortPath, srcURL string) error {
 	err := s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket(s.bucketName)
 
 		err := b.Put([]byte(shortPath), []byte(srcURL))
 		if err != nil {
@@ -53,7 +53,7 @@ func (s *BoltStorage) GetSourceURL(shortPath string) (string, error) {
 	var srcURL string
 
 	s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket(s.bucketName)
 
 		srcURL = string(b.Get([]byte(shortPath)))
 
@@ -84,6 +84,36 @@ func (s *BoltStorage) GetShortPath(srcURL string) (string, error) {
 }
 
 func (s *BoltStorage) DeleteSourceURL(srcURL string) error {
+	delKeys := [][]byte{}
 
-	return nil
+	s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(s.bucketName))
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			str := string(v)
+			if str == srcURL {
+				delKeys = append(delKeys, k)
+			}
+		}
+
+		return nil
+	})
+
+	if len(delKeys) == 0 {
+		return nil
+	}
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(s.bucketName)
+
+		for _, key := range delKeys {
+			if err := b.Delete(key); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return err
 }

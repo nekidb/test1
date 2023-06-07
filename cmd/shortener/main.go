@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/nekidb/test1/internal/config"
 	"github.com/nekidb/test1/internal/server"
@@ -38,7 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	appContext, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	appContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	defer stop()
 
 	g, gCtx := errgroup.WithContext(appContext)
