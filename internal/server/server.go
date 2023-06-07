@@ -27,15 +27,13 @@ func NewServer(shortener *shortener.ShortenerService) *Server {
 	}
 
 	srv.initRouter()
+	srv.server.Handler = srv.router
 
 	return &srv
 }
 
 func (s *Server) Serve(ln net.Listener) error {
-	srv := &http.Server{
-		Handler: s.router,
-	}
-	return srv.Serve(ln)
+	return s.server.Serve(ln)
 }
 
 func (s *Server) Shutdown() error {
